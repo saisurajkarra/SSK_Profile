@@ -1,4 +1,5 @@
 import { el, $, $$, copyText, onVisible, reduceMotion, fmt, setHash } from "./util.js";
+import { initSmoothScroll, scrollToEl, revealOnScroll, heroIntro, countUp, magnetic, pointerGlow, scrollProgress, swapIn } from "./motion.js";
 import { mountGalaxy } from "./galaxy.js";
 import { createDrawer } from "./drawer.js";
 import { mountExplorer } from "./explorer.js";
@@ -36,9 +37,16 @@ $$("[data-mail]").forEach((a) => { a.href = "mailto:" + mail() + "?subject=" + e
 const mt = $("[data-mail-text]"); if (mt) mt.textContent = mail();
 $("#copy-mail")?.addEventListener("click", () => copyText(mail()).then(() => {}));
 
-/* ---------- reveal + scrollspy ---------- */
-const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: 0.08, rootMargin: "0px 0px -40px 0px" });
-$$(".reveal").forEach((n) => io.observe(n));
+/* ---------- motion: smooth scroll, reveals, hero intro ---------- */
+initSmoothScroll();
+scrollProgress($("#progress"));
+revealOnScroll(".reveal");
+heroIntro({ kicker: $(".hero .kicker"), title: $("#h1"), lede: $(".hero .lede"), actions: $$(".hero .cta-row .btn"), stats: $$(".hero .stat"), visual: $(".galaxy-card") });
+$$(".hero .stat b").forEach((n) => countUp(n));
+magnetic(".btn--primary");
+pointerGlow($(".hero"));
+
+/* ---------- scrollspy ---------- */
 const links = $$(".nav a");
 const spy = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) links.forEach((a) => a.setAttribute("aria-current", String(a.getAttribute("href") === "#" + e.target.id))); }), { rootMargin: "-45% 0px -50% 0px" });
 $$("main section[id]").forEach((s) => spy.observe(s));
@@ -58,6 +66,7 @@ function showLab(id, { updateHash = true } = {}) {
   $$(".tab").forEach((t) => { const on = t.dataset.lab === id; t.setAttribute("aria-selected", String(on)); t.tabIndex = on ? 0 : -1; });
   $$(".lab").forEach((p) => { const on = p.id === id; p.classList.toggle("active", on); p.hidden = !on; });
   mountLab(id);
+  swapIn($("#" + id), { y: 14 });
   if (updateHash && mounted.has(id)) setHash(id, {});
 }
 $$(".tab").forEach((t) => {
@@ -102,7 +111,7 @@ let explorer, galaxy, tech;
 const drawer = createDrawer(data, { onTag: (t) => filterTech(t), getList: () => explorer?.list() ?? data.projects });
 const openProject = (id, sub) => { drawer.open(id, sub); galaxy?.select(id); };
 
-function filterTech(t) { explorer.setTech(t); location.hash = "#projects"; $("#projects").scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth" }); }
+function filterTech(t) { explorer.setTech(t); history.replaceState(null, "", "#projects"); scrollToEl($("#projects")); }
 
 explorer = mountExplorer($("#explorer-root"), data, { onOpen: (id) => openProject(id), onFilter: (ids) => galaxy?.highlight(ids) });
 
@@ -128,7 +137,7 @@ resetBtn.addEventListener("click", () => galaxy.focus(null));
 $$("#themes .theme").forEach((b) => b.addEventListener("click", () => {
   explorer.setAreas([]); explorer.setQuery("");
   if (b.dataset.areas) explorer.setAreas(b.dataset.areas.split(",").map(Number)); else explorer.setQuery(b.dataset.q);
-  $("#explorer-root").scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "start" });
+  scrollToEl($("#explorer-root"));
 }));
 
 /* tech constellation (lazy) */
@@ -149,7 +158,7 @@ const staticItems = [
   ["About & background", "Section", () => go("#about")], ["Contact", "Section", () => go("#contact")], ["Toggle light / dark theme", "Action", () => themeBtn.click()],
   ["Copy email address", "Action", () => copyText(mail())],
 ];
-function go(sel, lab) { if (lab) { showLab(lab); } $(sel).scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth" }); }
+function go(sel, lab) { if (lab) { showLab(lab); } scrollToEl($(sel)); }
 const all = () => staticItems.concat(data.projects.map((p) => [p.name, "Project · " + data.areas[p.n - 1].name, () => openProject(p.id), p.tagline + " " + p.tags.join(" ")]));
 function renderCmd(q) {
   const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
@@ -177,7 +186,7 @@ addEventListener("keydown", (e) => {
 function route() {
   const h = decodeURIComponent(location.hash.slice(1)), id = h.split("?")[0];
   if (id.startsWith("project/")) { const pid = id.slice(8); if (data.projects.some((p) => p.id === pid)) { openProject(pid); } return; }
-  if (LABS[id]) { showLab(id, { updateHash: false }); requestAnimationFrame(() => $("#labs").scrollIntoView()); }
+  if (LABS[id]) { showLab(id, { updateHash: false }); requestAnimationFrame(() => scrollToEl($("#labs"))); }
 }
 addEventListener("hashchange", () => { if (!drawer.current || !location.hash.startsWith("#project/")) route(); });
 route();

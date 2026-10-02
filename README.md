@@ -34,7 +34,8 @@ assets/js/                 ES modules, no bundler
   lab-asu.js lab-column.js lab-landfill.js
   galaxy.js explorer.js drawer.js tech.js
 assets/data/projects.json  project cards shown on the site
-assets/vendor/d3.min.js    D3 v7 (ISC licence)
+assets/vendor/             D3 v7 (ISC) · GSAP + ScrollTrigger (GreenSock standard licence) · Lenis (MIT)
+assets/js/motion.js        shared motion layer: hero choreography, scroll reveals, count-ups, smooth scroll
 assets/fonts/              Archivo, Source Serif 4, IBM Plex Mono (SIL OFL)
 scripts/check-data.py      pre-publish guard for the data file
 ```
@@ -52,8 +53,8 @@ scripts/check-data.py      pre-publish guard for the data file
 
 ## Privacy
 
-No analytics, cookies or third-party requests. Fonts and D3 are served from this repository. The contact address is assembled in JavaScript to avoid trivial scraping.
+No analytics, cookies or third-party requests. Fonts and all libraries are served from this repository. Animation is skipped for visitors who prefer reduced motion, and the page stays fully readable if any script fails to load. The contact address is assembled in JavaScript to avoid trivial scraping.
 
 ## Licences
 
-D3 (ISC); Archivo, Source Serif 4 and IBM Plex Mono (SIL Open Font License 1.1). Site code © Sai Suraj Karra.
+D3 (ISC); Lenis (MIT); GSAP and ScrollTrigger under the [GreenSock standard "no charge" licence](https://gsap.com/standard-license); Archivo, Source Serif 4 and IBM Plex Mono (SIL Open Font License 1.1). Site code © Sai Suraj Karra.

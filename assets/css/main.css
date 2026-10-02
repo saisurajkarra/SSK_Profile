@@ -157,7 +157,7 @@ button.chip:hover{border-color:var(--accent);color:var(--ink)}
 .hero{position:relative;padding-top:clamp(2rem,5vw,4rem);padding-bottom:clamp(2.5rem,5vw,4.5rem);overflow:hidden}
 .hero::before{content:"";position:absolute;inset:0;pointer-events:none;
   background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
-  background-size:48px 48px;mask-image:radial-gradient(ellipse 80% 70% at 70% 30%,#000 20%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse 80% 70% at 70% 30%,#000 20%,transparent 75%)}
+  background-size:48px 48px;--mask:radial-gradient(circle 380px at var(--mx,70%) var(--my,30%),#000,transparent 70%),radial-gradient(ellipse 80% 70% at 70% 30%,rgba(0,0,0,.5) 20%,transparent 75%);mask-image:var(--mask);-webkit-mask-image:var(--mask)}
 .hero::after{content:"";position:absolute;width:60vw;height:60vw;max-width:900px;max-height:900px;right:-12vw;top:-18vw;background:radial-gradient(circle,var(--glow),transparent 65%);pointer-events:none}
 .hero-grid{position:relative;display:grid;gap:clamp(1.5rem,4vw,3.5rem);grid-template-columns:1fr;align-items:center;z-index:1}
 @media (min-width:1020px){.hero-grid{grid-template-columns:minmax(0,5.2fr) minmax(0,6.8fr)}}
@@ -512,3 +512,14 @@ footer.site .wrap{display:flex;flex-wrap:wrap;gap:.6rem 2rem;justify-content:spa
   .topbar .wrap{gap:.6rem}
   .icon-btn{min-width:36px;height:36px;padding:0 .55rem}
 }
+
+/* ---------- motion layer ---------- */
+html.lenis,html.lenis body{height:auto}
+html.lenis{scroll-behavior:auto!important}
+.lenis.lenis-stopped{overflow:clip}
+.lenis [data-lenis-prevent]{overscroll-behavior:contain}
+.progress{position:fixed;left:0;top:0;height:3px;width:100%;background:linear-gradient(90deg,var(--accent),var(--accent-ink));z-index:70;transform:scaleX(0);transform-origin:0 50%;pointer-events:none}
+.w{display:inline-block;overflow:hidden;vertical-align:top;padding:0 .04em .12em;margin:0 -.04em -.12em}
+.wi{display:inline-block;will-change:transform}
+.gsap-on .reveal{transition:none!important}
+.btn--primary{will-change:transform}

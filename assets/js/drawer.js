@@ -1,5 +1,6 @@
 // Project details drawer: accessible dialog (focus trap, Esc, scrim) rendering one project card.
 import { el, $, $$ } from "./util.js";
+import { lockScroll } from "./motion.js";
 
 // Status tags: In production · Working system · Prototype · Demo · Design · Reference
 export const maturityClass = (m) => (/production|working system/i.test(m) ? "chip--status" : /prototype/i.test(m) ? "chip--pilot" : "chip--demo");
@@ -69,7 +70,7 @@ export function createDrawer(data, { onTag = () => {}, getList = () => data.proj
       if (!current) opener = document.activeElement;
       current = p; render(p, subId);
       scrim.classList.add("on"); dlg.classList.add("on"); dlg.setAttribute("aria-hidden", "false");
-      document.documentElement.style.overflow = "hidden";
+      lockScroll(true);
       history.replaceState(null, "", "#project/" + id);
       requestAnimationFrame(() => body.focus({ preventScroll: true }));
       return true;
@@ -78,7 +79,7 @@ export function createDrawer(data, { onTag = () => {}, getList = () => data.proj
       if (!current) return;
       current = null;
       scrim.classList.remove("on"); dlg.classList.remove("on"); dlg.setAttribute("aria-hidden", "true");
-      document.documentElement.style.overflow = "";
+      lockScroll(false);
       if (location.hash.startsWith("#project/")) history.replaceState(null, "", location.pathname + location.search + "#projects");
       opener?.focus?.({ preventScroll: true }); opener = null;
     },
