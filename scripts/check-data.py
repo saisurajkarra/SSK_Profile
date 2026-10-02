@@ -3,7 +3,8 @@
 
 Scans every string in the given JSON files for things that must never reach a public
 GitHub Pages site (local paths, e-mail addresses, URLs, credential words, the employer's
-name, AI-assistant mentions) and checks the project-card schema.
+name, AI-assistant mentions) and checks the project-card schema. Private patterns come from
+scripts/denylist.local when it exists.
 
     python3 scripts/check-data.py assets/data/projects.json sarkai/assets/data/*.json
 
@@ -21,17 +22,30 @@ BANNED = {
     "credential word": r"\bpassw(?:or)?d|\bsecret\b|\bcredential|\bapi[ _-]?key\b|\bbearer\b|\.env\b|\bplaintext\b|VALID_USERS|HSERAG",
     "tls / auth bypass": r"verify\s*=\s*False|auth bypass|isAuthenticated",
     "AI-assistant mention": r"\bClaude\b|GitHub Copilot|Microsoft Copilot|\bChatGPT\b|AI-generated|vibe[- ]cod",
-    "employer name": r"\bAir ?Liquide\b|\bAirgas\b|\bairliquide\b",
 }
-# Internal program / tool / folder names and internal-system vendors. None of these may appear anywhere.
-# Coined names are matched case-sensitively so ordinary words ("rework", "downloads") do not trip them.
-INTERNAL_CS = (
-    r"AARMOR|FleetView|S&OPE|\bSOPE\b|HSERAG|\bTWK\b|ReWork|Shap_Tool|Sai Workspace|Atlas|InvestTrade|Career Ops|World Monitor|"
-    r"Capex-Pulse|PolySolve|Perosn|\bALTA\b|HighRadius|Bulk Management|Lost Bobbin|Capturing Loss"
-)
-INTERNAL_CI = r"tracevault|eMaint|Procore|Best code|zip \(|\bv\d{2}\b|Duty Drawback Spend|Downloads project|\bPulse\b"
-# Words that must not appear in a project or sub-project *name* (employer product lines).
-NAME_BANNED = r"\bMembrane|\bNitrogen\b"
+# Private patterns live in scripts/denylist.local (git-ignored on purpose, so the words never
+# enter the repository): one regular expression per line, '#' for comments, a leading 'cs:'
+# makes a pattern case-sensitive. Lines starting with 'name:' apply to project names only.
+def _load_private():
+    import pathlib
+    f = pathlib.Path(__file__).resolve().parent / "denylist.local"
+    cs, ci, name = [], [], []
+    if f.exists():
+        for line in f.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("name:"):
+                name.append(line[5:])
+            elif line.startswith("cs:"):
+                cs.append(line[3:])
+            else:
+                ci.append(line)
+    j = lambda xs: "|".join(xs) if xs else r"(?!x)x"
+    return j(cs), j(ci), j(name)
+
+
+INTERNAL_CS, INTERNAL_CI, NAME_BANNED = _load_private()
 
 # Phrases that trip a pattern but are harmless in context.
 ALLOW = ("process-secret",)
@@ -59,7 +73,7 @@ def main(paths):
         for where, s in walk(data):
             for ok in ALLOW:
                 s = s.replace(ok, "")
-            m2 = re.search(INTERNAL_CS, s)
+            m2 = re.search(INTERNAL_CS, s) or re.search(INTERNAL_CI, s, flags=re.I)
             if m2:
                 problems += 1
                 print(f"{p}: {where}: internal name: ...{s[max(0, m2.start()-30):m2.end()+30]!r}")
