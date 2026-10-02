@@ -5,7 +5,7 @@ import { createDrawer } from "./drawer.js";
 import { mountExplorer } from "./explorer.js";
 
 const d3 = window.d3;
-const MAIL = ["sai123karra", "gmail.com"];
+const MAIL = ["karra.saisuraj", "gmail.com"];
 const mail = () => MAIL.join("@");
 
 /* ---------- theme ---------- */
