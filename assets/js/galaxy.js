@@ -1,5 +1,5 @@
 // Project Galaxy — force-directed map of the project portfolio.
-// "Industrial AI" sits at the centre; each area is a numbered "instrument bubble" on a ring; projects orbit their area.
+// "Industrial SI" sits at the centre; each area is a numbered "instrument bubble" on a ring; projects orbit their area.
 import { el, clamp, tip, reduceMotion, onResize, onVisible } from "./util.js";
 
 const d3 = window.d3;
@@ -10,7 +10,7 @@ const short = (s, n = 26) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…"
 export function mountGalaxy(host, data, { onSelect = () => {}, onFocus = () => {} } = {}) {
   const { areas, projects } = data;
   const svg = d3.select(host).append("svg").attr("viewBox", `0 0 ${VW} ${VH}`).attr("role", "group")
-    .attr("aria-label", `Map of ${projects.length} projects in ${areas.length} areas of industrial AI`);
+    .attr("aria-label", `Map of ${projects.length} projects in ${areas.length} areas of industrial SI`);
   const root = svg.append("g").attr("class", "g-root");
   const gGuides = root.append("g"), gSpokes = root.append("g"), gHulls = root.append("g"), gLinks = root.append("g"),
     gNodes = root.append("g"), gHubs = root.append("g"), gLabels = root.append("g").style("pointer-events", "none");
@@ -65,9 +65,9 @@ export function mountGalaxy(host, data, { onSelect = () => {}, onFocus = () => {
   // the neutral centre of the map
   const centre = gHubs.append("g").attr("class", "g-hub core").attr("transform", `translate(${CX},${CY})`).style("pointer-events", "none");
   centre.append("circle").attr("class", "ring").attr("r", 34);
-  centre.append("text").text("AI").style("font-size", "17px").style("font-weight", 650);
+  centre.append("text").text("SI").style("font-size", "17px").style("font-weight", 650);
   const labelSel = gLabels.selectAll("text").data(hubs).join("text").attr("class", "g-label").text((d) => short(d.name, 30));
-  const centreLabel = gLabels.append("text").attr("class", "g-label centre-label").attr("x", CX).attr("y", CY + 58).attr("text-anchor", "middle").style("font-weight", 650).text("INDUSTRIAL AI");
+  const centreLabel = gLabels.append("text").attr("class", "g-label centre-label").attr("x", CX).attr("y", CY + 58).attr("text-anchor", "middle").style("font-weight", 650).text("INDUSTRIAL SI");
 
   // ----- tooltips -----
   const tipContent = (d) => tip.rows(d.name, `${String(d.n).padStart(2, "0")} · ${d.hub.name}`, [{ label: d.maturity, value: "" }]).concat([el("span", { style: "display:block;margin-top:.3rem;opacity:.85", text: d.tagline })]);

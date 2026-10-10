@@ -1,11 +1,11 @@
 # Sai Suraj Karra · Portfolio
 
-AI & data lead for industrial AI. A static, no-build portfolio site with working interactive models:
+SI (Super Intelligence) & data lead. A static, no-build portfolio site with working interactive models:
 
 - **Load-shifting lab** – optimise a continuous plant with product storage against hourly power prices (dynamic programming), then approve or reject each change the agents propose.
 - **Distillation column lab** – step through a McCabe–Thiele column and see the stages-versus-reflux trade-off for a binary mixture.
 - **Landfill gas lab** – first-order-decay (EPA-style) gas forecast over 60 years.
-- **Project map** – 42 projects across 12 areas around a neutral "Industrial AI" centre; click an area to zoom, click a project for its full write-up.
+- **Project map** – 42 projects across 12 areas around a neutral "Industrial SI" centre; click an area to zoom, click a project for its full write-up.
 - **Technology map** and a **searchable project index** (press `/` or `Ctrl/⌘ K`).
 
 Every lab can be shared as a link to the exact scenario and exported as a PNG.
