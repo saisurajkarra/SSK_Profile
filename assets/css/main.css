@@ -523,3 +523,5 @@ html.lenis{scroll-behavior:auto!important}
 .wi{display:inline-block;will-change:transform}
 .gsap-on .reveal{transition:none!important}
 .btn--primary{will-change:transform}
+
+.d-links{display:flex;flex-wrap:wrap;gap:.5rem;margin:.1rem 0 .3rem}

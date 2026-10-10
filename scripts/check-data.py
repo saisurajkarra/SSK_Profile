@@ -54,11 +54,16 @@ LIMITS = {
 }
 
 
+ALLOWED_LINKS = ("https://github.com/saisurajkarra/", "https://saisurajkarra.github.io/")
+
+
 def walk(node, path=""):
     if isinstance(node, str):
         yield path, node
     elif isinstance(node, dict):
         for k, v in node.items():
+            if k == "url":                      # project links are checked separately, below
+                continue
             yield from walk(v, f"{path}.{k}" if path else k)
     elif isinstance(node, list):
         for i, v in enumerate(node):
@@ -84,6 +89,10 @@ def main(paths):
                     print(f"{p}: {where}: {label}: ...{s[max(0, m.start()-30):m.end()+30]!r}")
         projects = data.get("projects") if isinstance(data, dict) else None
         for pr in projects or []:
+            for ln in pr.get("links", []):
+                if not str(ln.get("url", "")).startswith(ALLOWED_LINKS):
+                    problems += 1
+                    print(f"{p}: {pr.get('id')}: link outside the allowed hosts: {ln.get('url')!r}")
             for nm in [pr.get("name", "")] + [x.get("name", "") for x in pr.get("subs", [])]:
                 if re.search(NAME_BANNED, nm, flags=re.I):
                     problems += 1

@@ -1,11 +1,11 @@
-// ASU agent lab — illustrative load-shifting of a liquid-producing air separation plant.
+// Load-shifting lab — illustrative power-cost optimisation of a continuous plant with product storage.
 // The optimiser is real (finite-horizon dynamic programming over tank level × previous load),
 // but every number here is SYNTHETIC: prices are made-up curves, plant parameters are generic.
 import { el, $, clamp, fmt, tip, onResize, rafThrottle, hashParams, setHash, shareURL, copyText, exportPNG, paintRange } from "./util.js";
 
 const d3 = window.d3;
 const H = 24;
-const Q_NOM = 22;        // t/h of liquid product at 100 % load
+const Q_NOM = 22;        // t/h of product at 100 % load
 const P_NOM = 20;        // MW at 100 % load
 const OVERHEAD = 0.12;   // share of nominal power drawn regardless of load (turn-down penalty)
 const E_T = P_NOM / Q_NOM; // MWh per tonne at full load
@@ -25,7 +25,7 @@ const SHAPE = [0.88, 0.86, 0.85, 0.85, 0.87, 0.92, 1.0, 1.08, 1.1, 1.08, 1.05, 1
 const SHAPE_MEAN = d3.mean(SHAPE);
 const DEFAULTS = { p: "duck", tank: 6, min: 65, dem: 82, ramp: 40, ev: "" };
 
-export function mountAsuLab(root, { hashId = "lab-asu" } = {}) {
+export function mountPowerLab(root, { hashId = "lab-power", onResult = null } = {}) {
   let st = { ...DEFAULTS };
   let prices = curve(PRESETS[st.p].pts);
   let custom = false;
@@ -155,13 +155,13 @@ export function mountAsuLab(root, { hashId = "lab-asu" } = {}) {
     return { node: el("div", { class: "ctl" }, el("label", { for: ids(key) }, label, out), input, hint ? el("small", { text: hint }) : null), input, sync };
   };
   const sl = {
-    tank: slider("tank", "Liquid storage", 2, 36, 1, " h", "Hours of full-rate output the tank can hold. More storage = more freedom to shift."),
+    tank: slider("tank", "Product storage", 2, 36, 1, " h", "Hours of full-rate output the storage can hold. More storage = more freedom to shift."),
     min: slider("min", "Minimum turn-down", 40, 90, 1, " %", "Lowest stable load. Lower = more room to ride out expensive hours."),
     dem: slider("dem", "Product demand", 70, 95, 1, " %", "Average customer pull as a share of nominal capacity."),
     ramp: slider("ramp", "Ramp limit", 10, 100, 5, " %/h", "Largest load change allowed between hours."),
   };
   const presetBtns = Object.entries(PRESETS).map(([k, v]) => el("button", { class: "chip", type: "button", "aria-pressed": String(st.p === k), dataset: { p: k }, text: v.label }));
-  const evBtns = [["s", "Medical O₂ surge · 09–15h"], ["d", "Derate cap 80% · 12–20h"]].map(([k, t]) =>
+  const evBtns = [["s", "Demand surge · 09–15h"], ["d", "Derate cap 80% · 12–20h"]].map(([k, t]) =>
     el("button", { class: "chip", type: "button", "aria-pressed": String(st.ev.includes(k)), dataset: { ev: k }, text: t }));
 
   const svgHost = el("div", { class: "chart-host" });
@@ -194,14 +194,14 @@ export function mountAsuLab(root, { hashId = "lab-asu" } = {}) {
       el("div", { class: "panel controls" },
         el("h4", {}, "Plant"),
         sl.tank.node, sl.min.node, sl.dem.node, sl.ramp.node,
-        el("p", { class: "lab-note", text: "A simplified model: a 20 MW liquid-producing plant (22 t/h at full load) running on sample prices, built to show the method." })),
+        el("p", { class: "lab-note", text: "A simplified model: a 20 MW continuous plant (22 t/h at full load) with product storage, running on sample prices, built to show the method." })),
       el("div", { class: "panel" },
         el("h4", {}, el("span", { text: "Agent proposals · a human decides" }), el("span", { class: "btn-row" }, approveAll, rejectAll)),
         el("p", { class: "lab-note", style: "margin-bottom:.7rem", text: "Proposals are linked through the storage tank, so their values add up to more than the total saving: rejecting a charging block can make a later cut unsafe. Try it." }),
         propHost),
       el("div", { class: "panel" }, el("h4", { text: "Agent log (computed live)" }), logHost),
       el("div", { class: "lab-foot" }, shareBtn, pngBtn, resetBtn,
-        el("span", { class: "note", text: "The same dynamic-programming idea scales from this toy to a fleet; real plants add compressor maps, purity, argon and customer logistics." })),
+        el("span", { class: "note", text: "The same dynamic-programming idea scales from this toy to a fleet; real plants add equipment curves, quality limits and customer logistics." })),
       el("details", { class: "how" }, el("summary", { text: "How the optimiser works" }),
         el("div", { class: "body" },
           el("p", {}, "State = (tank level, previous load). For each hour, working backward from midnight, every state picks the load that minimises ",
@@ -248,7 +248,7 @@ export function mountAsuLab(root, { hashId = "lab-asu" } = {}) {
     const nice = (s, n) => s.ticks(n);
     panel(g.ys[0], g.hs[0], yP, nice(yP, 4), `DAY-AHEAD PRICE · $/MWh · thin line = day average $${d3.mean(prices).toFixed(0)}`, (v) => v);
     panel(g.ys[1], g.hs[1], yL, [yL.domain()[0] < 50 ? 50 : yL.domain()[0], 75, 100].filter((v, i, a) => a.indexOf(v) === i && v >= yL.domain()[0]), "PLANT LOAD · % of nominal", (v) => v);
-    panel(g.ys[2], g.hs[2], yT, [0, 50, 100], "LIQUID STORAGE · % full", (v) => v);
+    panel(g.ys[2], g.hs[2], yT, [0, 50, 100], "STORAGE · % full", (v) => v);
 
     // x axis
     const step = W < 560 ? 6 : 3;
@@ -391,13 +391,13 @@ export function mountAsuLab(root, { hashId = "lab-asu" } = {}) {
     const ap = props.filter((p) => !rejected.has(p.key)).length;
     const row = (who, msg, cls) => el("div", { class: cls || "" }, el("b", { text: who }), el("span", { text: msg }));
     const lines = [
-      row("PriceWatcher", `curve loaded: low $${lo[0].toFixed(0)} at ${fmt.hh(lo[1])}, high $${hi[0].toFixed(0)} at ${fmt.hh(hi[1])}, spread $${(hi[0] - lo[0]).toFixed(0)}/MWh${custom ? " (edited by you)" : ""}`),
-      row("DemandForecaster", `average pull ${d3.mean(P.dem).toFixed(1)} t/h, peak ${dMax[0].toFixed(1)} t/h at ${fmt.hh(dMax[1])}${P.surge ? " · medical O₂ surge injected" : ""}`),
-      row("PlantGuard", `turn-down ≥ ${(P.minL * 100).toFixed(0)} %, ramp ≤ ${(P.ramp * 100).toFixed(0)} %/h, tank ${P.S.toFixed(0)} t${P.derate ? ", derate cap 80 % 12–20h" : ""}`),
+      row("Prices", `curve loaded: low $${lo[0].toFixed(0)} at ${fmt.hh(lo[1])}, high $${hi[0].toFixed(0)} at ${fmt.hh(hi[1])}, spread $${(hi[0] - lo[0]).toFixed(0)}/MWh${custom ? " (edited by you)" : ""}`),
+      row("Demand", `average pull ${d3.mean(P.dem).toFixed(1)} t/h, peak ${dMax[0].toFixed(1)} t/h at ${fmt.hh(dMax[1])}${P.surge ? " · demand surge injected" : ""}`),
+      row("Plant limits", `turn-down ≥ ${(P.minL * 100).toFixed(0)} %, ramp ≤ ${(P.ramp * 100).toFixed(0)} %/h, tank ${P.S.toFixed(0)} t${P.derate ? ", derate cap 80 % 12–20h" : ""}`),
       row("Optimiser", `${fmt.n0(sol.states)} state-action pairs solved by dynamic programming in ${sol.ms.toFixed(1)} ms`),
     ];
-    if (sApp.unmet > 0.05) lines.push(row("PlantGuard", `ALERT ${sApp.unmet.toFixed(1)} t of demand would go unserved under the approved plan`, "warn"));
-    if (sApp.vent > 0.05) lines.push(row("PlantGuard", `${sApp.vent.toFixed(1)} t would be vented (tank full)`, "warn"));
+    if (sApp.unmet > 0.05) lines.push(row("Plant limits", `ALERT ${sApp.unmet.toFixed(1)} t of demand would go unserved under the approved plan`, "warn"));
+    if (sApp.vent > 0.05) lines.push(row("Plant limits", `${sApp.vent.toFixed(1)} t would be vented (tank full)`, "warn"));
     lines.push(row("Governance", props.length ? `${props.length} change${props.length > 1 ? "s" : ""} proposed · ${ap} approved · ${props.length - ap} rejected. Nothing runs without a human decision.` : "no changes proposed", "gate-l"));
     logHost.replaceChildren(...lines);
   }
@@ -418,8 +418,13 @@ export function mountAsuLab(root, { hashId = "lab-asu" } = {}) {
   };
   const persist = rafThrottle(() => setHash(hashId, stateParams()));
 
+  function emitResult() {
+    if (!onResult || !model) return;
+    const save = model.sBase.total - model.sApp.total, pct = model.sBase.total > 0 ? (save / model.sBase.total) * 100 : 0;
+    onResult({ key: "pct", value: Math.max(0, pct), pct, canApply: pct > 0.05, label: `${pct.toFixed(1)}% saved on the sample day`, detail: `${fmt.usd(save)} of ${fmt.usd(model.sBase.total)} on the sample plant, with your approvals` });
+  }
   function update(fast) {
-    compute(); render(); renderKpis(); if (!fast) { renderProps(); renderLog(); renderTable(); } else { renderProps(); renderLog(); }
+    compute(); render(); renderKpis(); emitResult(); if (!fast) { renderProps(); renderLog(); renderTable(); } else { renderProps(); renderLog(); }
     persist();
   }
 
@@ -431,7 +436,7 @@ export function mountAsuLab(root, { hashId = "lab-asu" } = {}) {
   rejectAll.addEventListener("click", () => { model.props.forEach((p) => rejected.add(p.key)); update(); });
   resetBtn.addEventListener("click", () => { st = { ...DEFAULTS }; Object.values(sl).forEach((s) => { s.input.value = st[s.input.id.replace(hashId + "-", "")]; s.sync(); }); prices = curve(PRESETS[st.p].pts); custom = false; rejected.clear(); evBtns.forEach((b) => b.setAttribute("aria-pressed", "false")); syncPresets(); update(); });
   shareBtn.addEventListener("click", () => copyText(shareURL(hashId, stateParams())));
-  pngBtn.addEventListener("click", () => exportPNG(svgNode, { title: "ASU load-shifting · one synthetic day", sub: `${PRESETS[st.p]?.label || "Custom prices"} · storage ${st.tank} h · turn-down ${st.min}% · saved ${fmt.usd(model.sBase.total - model.sApp.total)} (${((model.sBase.total - model.sApp.total) / model.sBase.total * 100).toFixed(1)}%)`, filename: "asu-load-shifting.png" }));
+  pngBtn.addEventListener("click", () => exportPNG(svgNode, { title: "Load shifting · one synthetic day", sub: `${PRESETS[st.p]?.label || "Custom prices"} · storage ${st.tank} h · turn-down ${st.min}% · saved ${fmt.usd(model.sBase.total - model.sApp.total)} (${((model.sBase.total - model.sApp.total) / model.sBase.total * 100).toFixed(1)}%)`, filename: "load-shifting.png" }));
 
   onResize(svgHost, (w) => { W = w; render(); });
   update();

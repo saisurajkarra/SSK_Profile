@@ -53,7 +53,7 @@ $$("main section[id]").forEach((s) => spy.observe(s));
 
 /* ---------- labs (lazy) ---------- */
 const LABS = {
-  "lab-asu": { root: "#lab-asu-root", load: () => import("./lab-asu.js").then((m) => m.mountAsuLab) },
+  "lab-power": { root: "#lab-power-root", load: () => import("./lab-power.js").then((m) => m.mountPowerLab) },
   "lab-column": { root: "#lab-column-root", load: () => import("./lab-column.js").then((m) => m.mountColumnLab) },
   "lab-landfill": { root: "#lab-landfill-root", load: () => import("./lab-landfill.js").then((m) => m.mountLandfillLab) },
 };
@@ -76,13 +76,13 @@ $$(".tab").forEach((t) => {
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") { const n = tabs[(i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length]; n.focus(); n.click(); e.preventDefault(); }
   });
 });
-$("#lab-asu").classList.add("active");
-onVisible($("#labs"), (v) => { if (v && !mounted.has("lab-asu") && !location.hash.startsWith("#lab-")) mountLab("lab-asu"); }, { threshold: 0, rootMargin: "300px" });
+$("#lab-power").classList.add("active");
+onVisible($("#labs"), (v) => { if (v && !mounted.has("lab-power") && !location.hash.startsWith("#lab-")) mountLab("lab-power"); }, { threshold: 0, rootMargin: "300px" });
 
 /* ---------- agents ring ---------- */
 function agentsRing() {
   const svg = d3.select("#agents-ring"); if (svg.empty()) return;
-  const N = 18, R = 108, c = 150;
+  const N = 12, R = 108, c = 150;
   const pts = d3.range(N).map((i) => { const a = (i / N) * Math.PI * 2 - Math.PI / 2; return { i, x: c + Math.cos(a) * R, y: c + Math.sin(a) * R }; });
   svg.append("circle").attr("cx", c).attr("cy", c).attr("r", R).attr("fill", "none").attr("stroke", "var(--rule)");
   svg.selectAll("line").data(pts).join("line").attr("class", "a-link").attr("x1", (d) => d.x).attr("y1", (d) => d.y).attr("x2", c).attr("y2", c);
@@ -90,7 +90,7 @@ function agentsRing() {
   svg.append("circle").attr("class", "gate").attr("cx", c).attr("cy", c).attr("r", 36);
   svg.append("text").attr("class", "gate-t").attr("x", c).attr("y", c - 3).attr("text-anchor", "middle").text("HUMAN");
   svg.append("text").attr("class", "gate-t").attr("x", c).attr("y", c + 9).attr("text-anchor", "middle").text("APPROVES");
-  svg.append("text").attr("x", c).attr("y", 292).text("18 agents · prices · demand · plant state");
+  svg.append("text").attr("x", c).attr("y", 292).text("agents · prices · demand · plant state");
   if (reduceMotion()) return;
   let visible = true; onVisible(svg.node(), (v) => (visible = v));
   setInterval(() => {
@@ -153,7 +153,7 @@ onVisible($("#stack"), async (v) => {
 const cmd = { box: $("#cmdk"), input: $("#cmdk-input"), list: $("#cmdk-list"), items: [], sel: 0 };
 const staticItems = [
   ["Work — what I've built", "Section", () => go("#work")], ["Labs — three models you can break", "Section", () => go("#labs")],
-  ["Lab 01 · ASU agents & power prices", "Lab", () => go("#labs", "lab-asu")], ["Lab 02 · Distillation column", "Lab", () => go("#labs", "lab-column")], ["Lab 03 · Landfill gas forecast", "Lab", () => go("#labs", "lab-landfill")],
+  ["Lab 01 · Load shifting & power prices", "Lab", () => go("#labs", "lab-power")], ["Lab 02 · Distillation column", "Lab", () => go("#labs", "lab-column")], ["Lab 03 · Landfill gas forecast", "Lab", () => go("#labs", "lab-landfill")],
   ["Projects — everything else I've built", "Section", () => go("#projects")], ["Technology constellation", "Section", () => go("#stack")], ["How I can help", "Section", () => go("#help")],
   ["About & background", "Section", () => go("#about")], ["Contact", "Section", () => go("#contact")], ["Toggle light / dark theme", "Action", () => themeBtn.click()],
   ["Copy email address", "Action", () => copyText(mail())],
@@ -184,6 +184,7 @@ addEventListener("keydown", (e) => {
 
 /* ---------- deep links ---------- */
 function route() {
+  if (location.hash.startsWith("#lab-asu")) history.replaceState(null, "", location.hash.replace("#lab-asu", "#lab-power"));   // earlier link name
   const h = decodeURIComponent(location.hash.slice(1)), id = h.split("?")[0];
   if (id.startsWith("project/")) { const pid = id.slice(8); if (data.projects.some((p) => p.id === pid)) { openProject(pid); } return; }
   if (LABS[id]) { showLab(id, { updateHash: false }); requestAnimationFrame(() => scrollToEl($("#labs"))); }

@@ -92,7 +92,7 @@ export function onVisible(node, fn, opts = { threshold: 0.15 }) {
   io.observe(node); return () => io.disconnect();
 }
 
-/* ---------- shareable state in the URL hash:  #lab-asu?tank=12&p=duck ---------- */
+/* ---------- shareable state in the URL hash:  #lab-power?tank=12&p=duck ---------- */
 export function hashParams(prefix) {
   const h = decodeURIComponent(location.hash.slice(1));
   const [id, q] = h.split("?");

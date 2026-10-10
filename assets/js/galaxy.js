@@ -1,29 +1,24 @@
 // Project Galaxy — force-directed map of the project portfolio.
-// Air separation sits at the centre; each area is a numbered "instrument bubble" on a ring; projects orbit their area.
+// "Industrial AI" sits at the centre; each area is a numbered "instrument bubble" on a ring; projects orbit their area.
 import { el, clamp, tip, reduceMotion, onResize, onVisible } from "./util.js";
 
 const d3 = window.d3;
 const VW = 1000, VH = 920, CX = VW / 2, CY = VH / 2;
-const RING_ORDER = [11, 6, 7, 8, 5, 4, 3, 9, 10];          // clockwise from the top
+const RING_ORDER = [1, 2, 11, 10, 6, 7, 12, 8, 5, 9, 4, 3];   // clockwise from the top: industrial, energy and vision, data, career, finance
 const short = (s, n = 26) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s);
 
 export function mountGalaxy(host, data, { onSelect = () => {}, onFocus = () => {} } = {}) {
   const { areas, projects } = data;
   const svg = d3.select(host).append("svg").attr("viewBox", `0 0 ${VW} ${VH}`).attr("role", "group")
-    .attr("aria-label", `Map of ${projects.length} projects in ${areas.length} areas, with air separation at the centre`);
+    .attr("aria-label", `Map of ${projects.length} projects in ${areas.length} areas of industrial AI`);
   const root = svg.append("g").attr("class", "g-root");
   const gGuides = root.append("g"), gSpokes = root.append("g"), gHulls = root.append("g"), gLinks = root.append("g"),
-    gSubs = root.append("g").attr("class", "g-subs"), gNodes = root.append("g"), gHubs = root.append("g"), gLabels = root.append("g").style("pointer-events", "none");
+    gNodes = root.append("g"), gHubs = root.append("g"), gLabels = root.append("g").style("pointer-events", "none");
 
   // ----- hub positions -----
   const hubs = areas.map((a) => {
-    let x = CX, y = CY;
-    if (a.n === 2) { x = CX + 175; y = CY - 120; }
-    else if (a.n !== 1) {
-      const i = RING_ORDER.indexOf(a.n), ang = -Math.PI / 2 + (i / RING_ORDER.length) * Math.PI * 2;
-      x = CX + Math.cos(ang) * 350; y = CY + Math.sin(ang) * 330;
-    }
-    return { ...a, x, y, count: 0 };
+    const i = Math.max(0, RING_ORDER.indexOf(a.n)), ang = -Math.PI / 2 + (i / RING_ORDER.length) * Math.PI * 2;
+    return { ...a, x: CX + Math.cos(ang) * 350, y: CY + Math.sin(ang) * 330, count: 0 };
   });
   const hubBy = Object.fromEntries(hubs.map((h) => [h.n, h]));
 
@@ -32,31 +27,20 @@ export function mountGalaxy(host, data, { onSelect = () => {}, onFocus = () => {
   let rScale = 1;
   const rOf = (p) => (5 + 8.5 * Math.sqrt((1 + p.subs.length) / maxSubs)) * rScale;
   const nodes = projects.map((p) => { const h = hubBy[p.n]; h.count++; return { ...p, hub: h, r: 0, x: CX + (Math.random() - 0.5) * 20, y: CY + (Math.random() - 0.5) * 20 }; });
-  const ASU = nodes.find((n) => n.n === 1);
-
-  // sub-project satellites for the central ASU twin
-  const subs = ASU ? ASU.subs.map((s, i, arr) => ({ ...s, ang: (i / arr.length) * Math.PI * 2 - Math.PI / 2 })) : [];
 
   // ----- static layers -----
   gGuides.append("ellipse").attr("cx", CX).attr("cy", CY).attr("rx", 350).attr("ry", 330).attr("fill", "none").attr("stroke", "var(--rule)").attr("stroke-width", 1);
   gGuides.append("circle").attr("cx", CX).attr("cy", CY).attr("r", 205).attr("fill", "none").attr("stroke", "var(--rule)").attr("stroke-width", 1);
-  hubs.filter((h) => h.n !== 1).forEach((h) => {
+  hubs.forEach((h) => {
     const mx = (CX + h.x) / 2, my = (CY + h.y) / 2, nx = -(h.y - CY), ny = h.x - CX, nl = Math.hypot(nx, ny) || 1;
-    const bend = h.n === 2 ? 0 : 38;
+    const bend = 38;
     gSpokes.append("path").attr("class", "g-spoke").attr("d", `M${CX},${CY} Q${mx + (nx / nl) * bend},${my + (ny / nl) * bend} ${h.x},${h.y}`);
   });
 
-  const hullG = gHulls.selectAll("path").data(hubs.filter((h) => h.n !== 1)).join("path").attr("class", "g-hull");
-  const linkSel = gLinks.selectAll("line").data(nodes.filter((n) => n.n !== 1)).join("line").attr("class", "g-link");
-  const subSel = gSubs.selectAll("g").data(subs).join("g").attr("class", "g-sub");
-  subSel.append("line").attr("stroke", "var(--accent)").attr("stroke-opacity", 0.25);
-  subSel.append("circle").attr("r", 3.2).attr("fill", "var(--accent)").attr("fill-opacity", 0.7).attr("stroke", "var(--surface)").attr("stroke-width", 1);
-  subSel.append("circle").attr("r", 10).attr("fill", "transparent").style("cursor", "pointer")
-    .on("pointermove", (e, s) => { if (e.pointerType !== "touch") tip.show(tip.rows(s.name, "Sub-project · ASU Digital Twin", []), e.clientX, e.clientY); })
-    .on("pointerleave", () => tip.hide())
-    .on("click", () => { tip.hide(); onSelect(ASU.id); });
+  const hullG = gHulls.selectAll("path").data(hubs).join("path").attr("class", "g-hull");
+  const linkSel = gLinks.selectAll("line").data(nodes).join("line").attr("class", "g-link");
 
-  const nodeSel = gNodes.selectAll("g").data(nodes).join("g").attr("class", (d) => "g-node" + (d.n <= 2 ? " core" : ""))
+  const nodeSel = gNodes.selectAll("g").data(nodes).join("g").attr("class", "g-node")
     .attr("tabindex", 0).attr("role", "button").attr("aria-label", (d) => `${d.name}, ${d.hub.name}. Open project`)
     .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(d.id); } })
     .on("click", (e, d) => { tip.hide(); onSelect(d.id); })
@@ -68,7 +52,7 @@ export function mountGalaxy(host, data, { onSelect = () => {}, onFocus = () => {
   nodeSel.append("circle").attr("class", "dot");
   nodeSel.append("circle").attr("class", "hit").attr("fill", "transparent");
 
-  const hubSel = gHubs.selectAll("g").data(hubs).join("g").attr("class", (d) => "g-hub" + (d.n === 1 ? " core" : ""))
+  const hubSel = gHubs.selectAll("g").data(hubs).join("g").attr("class", "g-hub")
     .attr("tabindex", 0).attr("role", "button").attr("aria-label", (d) => `Area ${d.n}: ${d.name}, ${d.count} project${d.count > 1 ? "s" : ""}. Zoom in`)
     .attr("transform", (d) => `translate(${d.x},${d.y})`)
     .on("click", (e, d) => focus(focused === d.n ? null : d.n))
@@ -76,10 +60,14 @@ export function mountGalaxy(host, data, { onSelect = () => {}, onFocus = () => {
     .on("pointerenter", (e, d) => { if (e.pointerType !== "touch") { tip.show(tip.rows(d.name, `Area ${String(d.n).padStart(2, "0")}`, [{ label: "Projects", value: d.count }]), e.clientX, e.clientY); spotlight(d.n); } })
     .on("pointermove", (e, d) => { if (e.pointerType !== "touch") tip.show(tip.rows(d.name, `Area ${String(d.n).padStart(2, "0")}`, [{ label: "Projects", value: d.count }]), e.clientX, e.clientY); })
     .on("pointerleave", () => { tip.hide(); spotlight(null); });
-  hubSel.append("circle").attr("class", "ring").attr("r", (d) => (d.n === 1 ? 30 : 17));
-  hubSel.filter((d) => d.n === 1).append("circle").attr("class", "badge").attr("cy", -30).attr("r", 12);
-  hubSel.append("text").text((d) => String(d.n).padStart(2, "0")).attr("y", (d) => (d.n === 1 ? -30 : 0)).style("font-size", "11px");
-  const labelSel = gLabels.selectAll("text").data(hubs).join("text").attr("class", "g-label").text((d) => (d.n === 1 ? "AIR SEPARATION" : d.n === 2 ? "" : short(d.name, 30)));
+  hubSel.append("circle").attr("class", "ring").attr("r", 17);
+  hubSel.append("text").text((d) => String(d.n).padStart(2, "0")).style("font-size", "11px");
+  // the neutral centre of the map
+  const centre = gHubs.append("g").attr("class", "g-hub core").attr("transform", `translate(${CX},${CY})`).style("pointer-events", "none");
+  centre.append("circle").attr("class", "ring").attr("r", 34);
+  centre.append("text").text("AI").style("font-size", "17px").style("font-weight", 650);
+  const labelSel = gLabels.selectAll("text").data(hubs).join("text").attr("class", "g-label").text((d) => short(d.name, 30));
+  const centreLabel = gLabels.append("text").attr("class", "g-label centre-label").attr("x", CX).attr("y", CY + 58).attr("text-anchor", "middle").style("font-weight", 650).text("INDUSTRIAL AI");
 
   // ----- tooltips -----
   const tipContent = (d) => tip.rows(d.name, `${String(d.n).padStart(2, "0")} · ${d.hub.name}`, [{ label: d.maturity, value: "" }]).concat([el("span", { style: "display:block;margin-top:.3rem;opacity:.85", text: d.tagline })]);
@@ -87,8 +75,8 @@ export function mountGalaxy(host, data, { onSelect = () => {}, onFocus = () => {
 
   // ----- simulation -----
   const sim = d3.forceSimulation(nodes).alphaDecay(0.018).velocityDecay(0.3)
-    .force("x", d3.forceX((d) => (d.n === 1 ? CX : d.hub.x)).strength((d) => (d.n === 1 ? 0.3 : 0.22)))
-    .force("y", d3.forceY((d) => (d.n === 1 ? CY : d.hub.y)).strength((d) => (d.n === 1 ? 0.3 : 0.22)))
+    .force("x", d3.forceX((d) => d.hub.x).strength(0.22))
+    .force("y", d3.forceY((d) => d.hub.y).strength(0.22))
     .force("collide", d3.forceCollide((d) => d.r + 2.4).strength(0.9))
     .force("charge", d3.forceManyBody().strength(-6))
     .force("pointer", pointerForce())
@@ -124,26 +112,12 @@ export function mountGalaxy(host, data, { onSelect = () => {}, onFocus = () => {
       const hull = d3.polygonHull(pts.concat([[h.x + 22, h.y], [h.x - 22, h.y], [h.x, h.y + 22], [h.x, h.y - 22]]));
       return hull ? d3.line().curve(d3.curveCatmullRomClosed.alpha(0.6))(hull) : null;
     });
-    paintSubs();
-    labelSel.attr("x", (d) => d.x).attr("y", (d) => d.y + (d.n === 1 ? 46 : d.y < CY ? -28 : 34))
-      .attr("text-anchor", "middle").style("font-size", labelSize + "px").style("font-weight", (d) => (d.n === 1 ? 650 : 500));
+    labelSel.attr("x", (d) => d.x).attr("y", (d) => d.y + (d.y < CY ? -28 : 34))
+      .attr("text-anchor", "middle").style("font-size", labelSize + "px").style("font-weight", 500);
+    centreLabel.style("font-size", labelSize + "px");
   }
 
-  function paintSubs() {
-    // ASU satellites orbit the central node
-    if (ASU) {
-      const t = performance.now() / 1000, rot = reduceMotion() ? 0 : t * 0.045, orb = ASU.r + 34;
-      subSel.each(function (s) {
-        const a = s.ang + rot, sx = ASU.x + Math.cos(a) * orb, sy = ASU.y + Math.sin(a) * orb;
-        const g = d3.select(this); g.attr("transform", `translate(${sx},${sy})`);
-        g.select("line").attr("x1", ASU.x - sx).attr("y1", ASU.y - sy).attr("x2", 0).attr("y2", 0);
-      });
-    }
-  }
-
-  // keep satellites moving while idle (cheap: only transforms)
   let raf = 0, visible = true;
-  function idle() { if (visible && !reduceMotion() && sim.alpha() < sim.alphaMin() + 0.001) paintSubs(); raf = requestAnimationFrame(idle); }
 
   // ----- focus / zoom -----
   let focused = null, labelSize = 12, pxW = VW, k = 1;
@@ -207,7 +181,6 @@ export function mountGalaxy(host, data, { onSelect = () => {}, onFocus = () => {
   const offV = onVisible(host, (v) => { visible = v; if (!v) sim.stop(); else if (!reduceMotion()) sim.alpha(0.05).restart(); }, { threshold: 0 });
   rScale = clamp(560 / (host.clientWidth || 560), 1, 1.9); setRadii(); paint();
   if (reduceMotion()) { sim.stop(); for (let i = 0; i < 320; i++) sim.tick(); paint(); }
-  else raf = requestAnimationFrame(idle);
 
   return { focus, highlight, select, areas: hubs, destroy() { cancelAnimationFrame(raf); sim.stop(); off(); offV(); svg.remove(); } };
 }

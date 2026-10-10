@@ -34,6 +34,7 @@ export function createDrawer(data, { onTag = () => {}, getList = () => data.proj
       el("span", { class: "chip", text: `${String(p.n).padStart(2, "0")} · ${a.name}` }),
       el("span", { class: "chip " + maturityClass(p.maturity), text: p.maturity })));
     kids.push(el("h2", { text: p.name }), el("p", { class: "d-tag", text: p.tagline }));
+    if (p.links?.length) kids.push(el("div", { class: "d-links" }, ...p.links.map((l) => el("a", { class: "btn btn--sm btn--primary", href: l.url, target: "_blank", rel: "noopener noreferrer", text: l.label + " ↗" }))));
     kids.push(sec("What it is", el("p", { text: p.what })));
     kids.push(sec("What it solves", el("p", { text: p.solves })));
     kids.push(sec("How it compares", el("div", { class: "vs" },

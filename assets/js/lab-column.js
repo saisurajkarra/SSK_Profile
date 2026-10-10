@@ -1,16 +1,16 @@
-// Distillation lab — McCabe–Thiele stage stepping for a binary N2/O2 column with constant relative volatility.
-// A teaching model: the production simulators this portfolio describes use rigorous stage-by-stage MESH solves
-// with real-fluid properties; here α is constant so the geometry is visible.
+// Distillation lab — McCabe–Thiele stage stepping for a binary column with constant relative volatility.
+// A teaching model: rigorous simulators solve every stage with real-fluid properties;
+// here α is constant so the geometry is visible.
 import { el, clamp, fmt, tip, onResize, rafThrottle, hashParams, setHash, shareURL, copyText, exportPNG, paintRange, reduceMotion } from "./util.js";
 
 const d3 = window.d3;
 const MAXN = 250;
-const DEFAULTS = { a: 3, z: 0.79, q: 0, d: 0.99, b: 0.62, r: 1.3 };
+const DEFAULTS = { a: 2.4, z: 0.5, q: 1, d: 0.98, b: 0.02, r: 1.3 };
 const PRESETS = {
-  hp:   { label: "ASU high-pressure column", v: { a: 3, z: 0.79, q: 0, d: 0.99, b: 0.62, r: 1.3 } },
-  pure: { label: "Ultra-pure N₂ top", v: { a: 3, z: 0.79, q: 0, d: 0.9995, b: 0.62, r: 1.3 } },
+  std:  { label: "Textbook split (α = 2.4)", v: { a: 2.4, z: 0.5, q: 1, d: 0.98, b: 0.02, r: 1.3 } },
+  pure: { label: "High-purity top (99.9 %)", v: { a: 2.4, z: 0.5, q: 1, d: 0.999, b: 0.02, r: 1.3 } },
   hard: { label: "Hard split (α = 1.4)", v: { a: 1.4, z: 0.5, q: 1, d: 0.95, b: 0.05, r: 1.3 } },
-  tall: { label: "Tall & cheap (R = 1.05 × min)", v: { a: 3, z: 0.79, q: 0, d: 0.99, b: 0.62, r: 1.05 } },
+  tall: { label: "Tall & cheap (R = 1.05 × min)", v: { a: 2.4, z: 0.5, q: 1, d: 0.98, b: 0.02, r: 1.05 } },
 };
 
 const eqY = (x, a) => (a * x) / (1 + (a - 1) * x);
@@ -57,7 +57,7 @@ function design({ a, z, q, d: xD, b: xB, r: rr }) {
 
 const stagesAt = (p, rr) => design({ ...p, r: rr }).Nfrac;
 
-export function mountColumnLab(root, { hashId = "lab-column" } = {}) {
+export function mountColumnLab(root, { hashId = "lab-column", onResult = null } = {}) {
   let st = { ...DEFAULTS };
   const ps = hashParams(hashId);
   if (ps) for (const k of Object.keys(DEFAULTS)) if (ps[k] != null && !isNaN(+ps[k])) st[k] = +ps[k];
@@ -72,11 +72,11 @@ export function mountColumnLab(root, { hashId = "lab-column" } = {}) {
     return { node: el("div", { class: "ctl" }, el("label", { for: input.id }, label, out), input, hint ? el("small", { text: hint }) : null), input, sync, key };
   };
   const S = [
-    slider("a", "Relative volatility α", 1.2, 6, 0.05, (v) => v.toFixed(2), "How easily N₂ boils off versus O₂. ≈3 in a high-pressure column, higher at low pressure."),
-    slider("z", "Feed N₂ fraction z", 0.3, 0.9, 0.01, (v) => v.toFixed(2), "Air is ≈0.79 N₂ on an O₂/N₂ basis."),
+    slider("a", "Relative volatility α", 1.2, 6, 0.05, (v) => v.toFixed(2), "How much more easily the light component boils off. Closer to 1 means a harder split."),
+    slider("z", "Feed light fraction z", 0.2, 0.8, 0.01, (v) => v.toFixed(2), "Mole fraction of the light component in the feed."),
     slider("q", "Feed condition q", 0, 1, 0.05, (v) => (v === 0 ? "0 · vapour" : v === 1 ? "1 · liquid" : v.toFixed(2)), "0 = saturated vapour, 1 = saturated liquid."),
-    slider("d", "Top purity x_D", 0.9, 0.9995, 0.0005, (v) => (v * 100).toFixed(2) + " %", "N₂ purity at the top. Watch the stage count explode near 99.99 %."),
-    slider("b", "Bottoms N₂ x_B", 0.05, 0.7, 0.01, (v) => v.toFixed(2), "Rich-liquid composition leaving the bottom."),
+    slider("d", "Top purity x_D", 0.9, 0.9995, 0.0005, (v) => (v * 100).toFixed(2) + " %", "Light-component purity at the top. Watch the stage count explode near 99.99 %."),
+    slider("b", "Bottoms light fraction x_B", 0.01, 0.5, 0.01, (v) => v.toFixed(2), "How much light component is allowed to leave with the bottoms."),
     slider("r", "Reflux R / R_min", 1.01, 4, 0.01, (v) => v.toFixed(2) + " ×", "The knob that trades columns' height against energy."),
   ];
   const presetBtns = Object.entries(PRESETS).map(([k, v]) => el("button", { class: "chip", type: "button", dataset: { p: k }, "aria-pressed": "false", text: v.label }));
@@ -99,11 +99,11 @@ export function mountColumnLab(root, { hashId = "lab-column" } = {}) {
     el("div", { class: "chart-pair" },
       el("div", { class: "chart-card" },
         el("div", { class: "scenario-bar" }, el("div", { class: "seg", role: "group", "aria-label": "Presets" }, ...presetBtns)),
-        el("div", { class: "chart-title" }, el("h4", { text: "McCabe–Thiele diagram" }), el("span", { text: "N₂ in liquid (x) vs vapour (y)" })), legend, h1),
+        el("div", { class: "chart-title" }, el("h4", { text: "McCabe–Thiele diagram" }), el("span", { text: "Light component in liquid (x) vs vapour (y)" })), legend, h1),
       el("div", { class: "chart-card" },
         el("div", { class: "chart-title" }, el("h4", { text: "The trade-off: stages vs reflux" }), el("span", { text: "More reflux = fewer stages, more energy" })), h2, whatif)),
     el("div", { class: "panel controls" }, el("h4", { text: "Column" }), ...S.map((s) => s.node),
-      el("p", { class: "lab-note", text: "Simplified model: constant α, binary N₂/O₂, total condenser. The full simulators solve every stage with real-fluid properties." })),
+      el("p", { class: "lab-note", text: "Simplified model: constant α, binary mixture, total condenser. Rigorous simulators solve every stage with real-fluid properties." })),
     el("div", { class: "lab-foot" }, stepBtn, shareBtn, pngBtn, resetBtn),
     el("details", { class: "how" }, el("summary", { text: "How it works" }), el("div", { class: "body" },
       el("p", {}, "Equilibrium: ", el("span", { class: "code", text: "y = αx / (1 + (α−1)x)" }), ". Rectifying line: ", el("span", { class: "code", text: "y = R/(R+1)·x + x_D/(R+1)" }),
@@ -128,7 +128,7 @@ export function mountColumnLab(root, { hashId = "lab-column" } = {}) {
     g1.append("g").attr("class", "ax gridl").attr("transform", `translate(0,${y(0)})`).call(d3.axisBottom(x).tickValues(ticks).tickSize(-ph).tickFormat(""));
     g1.append("g").attr("class", "ax noline").attr("transform", `translate(${x(0)},0)`).call(d3.axisLeft(y).tickValues(ticks).tickSize(0).tickPadding(8).tickFormat(d3.format(".1f"))).select(".domain").remove();
     g1.append("g").attr("class", "ax noline").attr("transform", `translate(0,${y(0)})`).call(d3.axisBottom(x).tickValues(ticks).tickSize(0).tickPadding(8).tickFormat(d3.format(".1f"))).select(".domain").remove();
-    g1.append("text").attr("class", "ax-title").attr("x", x(0.5)).attr("y", H - 4).attr("text-anchor", "middle").text("x · N₂ mole fraction in liquid");
+    g1.append("text").attr("class", "ax-title").attr("x", x(0.5)).attr("y", H - 4).attr("text-anchor", "middle").text("x · light-component mole fraction in liquid");
     g1.append("text").attr("class", "ax-title").attr("transform", `translate(11,${y(0.5)}) rotate(-90)`).attr("text-anchor", "middle").text("y · in vapour");
     const line = d3.line().x((d) => x(d[0])).y((d) => y(d[1]));
     const { a } = st;
@@ -235,6 +235,7 @@ export function mountColumnLab(root, { hashId = "lab-column" } = {}) {
     if (anim) { clearTimeout(anim); anim = null; }
     shown = Infinity; stepBtn.textContent = "▶ Step through stages";
     m = design(st); renderKpis(); renderDiagram(); renderTrade(); renderWhatIf(); renderTable(); persist();
+    if (onResult) { const v2 = design({ ...st, r: 2 }).V, pct = st.r < 2 && isFinite(v2) ? Math.max(0, ((v2 - m.V) / v2) * 100) : 0; onResult({ key: "pct", value: pct, pct, canApply: pct > 0.5, label: `${pct.toFixed(0)}% less boil-up than a 2× design`, detail: `${m.converged ? m.N + " stages" : "below the pinch"} at ${st.r.toFixed(2)}× minimum reflux` }); }
     presetBtns.forEach((b) => { const v = PRESETS[b.dataset.p].v; b.setAttribute("aria-pressed", String(Object.keys(v).every((k) => Math.abs(v[k] - st[k]) < 1e-9))); });
   }
   presetBtns.forEach((b) => b.addEventListener("click", () => { Object.assign(st, PRESETS[b.dataset.p].v); S.forEach((s) => { s.input.value = st[s.key]; s.sync(); }); update(); }));
