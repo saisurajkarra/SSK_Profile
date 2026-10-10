@@ -17,7 +17,6 @@ export function initSmoothScroll() {
     duration: 1.1,
     easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     smoothWheel: true,
-    anchors: { offset: -72 },
     prevent: (node) => !!node.closest?.(PREVENT),
   });
   if (gsap && ST) {
@@ -28,17 +27,36 @@ export function initSmoothScroll() {
     const loop = (t) => { lenis.raf(t); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
   }
+  anchorLinks();
   return lenis;
 }
 export function lockScroll(on) {
   if (lenis) on ? lenis.stop() : lenis.start();
   document.documentElement.style.overflow = on ? "hidden" : "";
 }
-export function scrollToEl(target, offset = -72) {
+export function scrollToEl(target, offset = -72, tries = 2) {
   const el = typeof target === "string" ? document.querySelector(target) : target;
   if (!el) return;
-  if (lenis) lenis.scrollTo(el, { offset, duration: 1.2 });
-  else el.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" });
+  // sections above the target can grow while we scroll past them (lazy-mounted charts), so check where we landed
+  const settle = () => { if (tries > 0 && Math.abs(el.getBoundingClientRect().top + offset) > 12) scrollToEl(el, offset, tries - 1); };
+  const dur = tries < 2 ? 0.6 : 1.2;
+  if (lenis) {
+    lenis.resize();                                   // pick up the latest page height first
+    lenis.scrollTo(Math.max(0, el.getBoundingClientRect().top + window.scrollY + offset), { duration: dur });   // a number, not the element, so Lenis's own scroll state cannot skew the target
+  } else el.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" });
+  setTimeout(settle, dur * 1000 + 350);              // not onComplete: a layout change can interrupt the animation
+}
+
+/* in-page links (#section) scroll through scrollToEl so they land on the section even when the page above it changes height */
+function anchorLinks() {
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest?.('a[href^="#"]');
+    if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || a.target) return;
+    const id = decodeURIComponent(a.getAttribute("href").slice(1));
+    const t = id && document.getElementById(id);
+    if (!t) return;
+    e.preventDefault(); scrollToEl(t); history.replaceState(null, "", "#" + id);
+  });
 }
 
 /* ---------- text split: wraps each word so it can slide up from a mask ---------- */

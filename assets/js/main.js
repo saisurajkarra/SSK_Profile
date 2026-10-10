@@ -58,6 +58,8 @@ const LABS = {
   "lab-landfill": { root: "#lab-landfill-root", load: () => import("./lab-landfill.js").then((m) => m.mountLandfillLab) },
 };
 const mounted = new Set();
+// mount below-the-fold pieces once the page is idle, so the layout is final before anyone jumps to a section
+const whenIdle = (fn) => ("requestIdleCallback" in window ? requestIdleCallback(fn, { timeout: 2000 }) : setTimeout(fn, 800));
 async function mountLab(id) {
   if (mounted.has(id)) return; mounted.add(id);
   const mount = await LABS[id].load(); mount($(LABS[id].root), { hashId: id });
@@ -78,6 +80,7 @@ $$(".tab").forEach((t) => {
 });
 $("#lab-power").classList.add("active");
 onVisible($("#labs"), (v) => { if (v && !mounted.has("lab-power") && !location.hash.startsWith("#lab-")) mountLab("lab-power"); }, { threshold: 0, rootMargin: "300px" });
+whenIdle(() => { if (!mounted.has("lab-power") && !location.hash.startsWith("#lab-")) mountLab("lab-power"); });
 
 /* ---------- agents ring ---------- */
 function agentsRing() {
@@ -142,12 +145,14 @@ $$("#themes .theme").forEach((b) => b.addEventListener("click", () => {
 
 /* tech constellation (lazy) */
 let techMounted = false;
-onVisible($("#stack"), async (v) => {
-  if (!v || techMounted) return; techMounted = true;
+async function mountTechOnce() {
+  if (techMounted) return; techMounted = true;
   const { mountTech } = await import("./tech.js");
   tech = mountTech($("#tech-root"), data, { onTech: (t, fromBar) => { if (!fromBar) return; }, onProject: (id) => openProject(id) });
   window.__tech = tech;
-}, { threshold: 0, rootMargin: "400px" });
+}
+onVisible($("#stack"), (v) => { if (v) mountTechOnce(); }, { threshold: 0, rootMargin: "400px" });
+whenIdle(mountTechOnce);
 
 /* ---------- command palette ---------- */
 const cmd = { box: $("#cmdk"), input: $("#cmdk-input"), list: $("#cmdk-list"), items: [], sel: 0 };
